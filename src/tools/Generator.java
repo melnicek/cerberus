@@ -32,9 +32,10 @@ public class Generator {
             // if something went wrong with this class it must be these 10 lines
 
             ByteArray hashedBytes = new ByteArray(Tools.hash(str, attackAlgorithm));
-            if(mainController.getProject().getAnalyzedHashes().containsKey(hashedBytes)) {
-                String hexString = mainController.getProject().getAnalyzedHashes().get(hashedBytes).getHexString();
-                CrackedHash ch = new CrackedHash(hexString, str);
+            if(mainController.getProject().getLoadedHashes().containsKey(hashedBytes)) {
+                String hexString = mainController.getProject().getLoadedHashes().get(hashedBytes).getHexString();
+                String algorithm = mainController.getProject().getLoadedHashes().get(hashedBytes).getAlgorithm();
+                CrackedHash ch = new CrackedHash(hexString, algorithm, str);
                 mainController.getProject().addCrackedHash(ch);
             }
             final long count = mainController.getCounter() + 1;

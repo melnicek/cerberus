@@ -41,7 +41,7 @@ public class BenchmarkController implements Initializable {
         isBenchmarking =  !isBenchmarking;
 
         Map<ByteArray, LoadedHash> testMap = new HashMap<>();
-        testMap.put(new ByteArray(new byte[]{100,100}), new LoadedHash("00"));
+        testMap.put(new ByteArray(new byte[]{100,100}), new LoadedHash("00",null));
 
         oneThreadCounter = 0;
         Thread thread = new Thread(() -> {

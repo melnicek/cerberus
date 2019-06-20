@@ -8,8 +8,8 @@ public class CrackedHash extends LoadedHash implements Serializable {
     private String password;
 
     // constructor
-    public CrackedHash(String hexString, String password) {
-        super(hexString);
+    public CrackedHash(String hexString, String algorithm, String password) {
+        super(hexString, algorithm);
         this.password = password;
     }
 

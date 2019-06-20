@@ -20,11 +20,6 @@ import java.util.*;
 
 public class MainController implements Initializable {
 
-    private boolean isFullEdition;
-    public void setIsFullEdition(boolean isFullEdition) {
-        this.isFullEdition = isFullEdition;
-    }
-
     private Project project = new Project();
 
     public boolean isCracking() {
@@ -70,12 +65,6 @@ public class MainController implements Initializable {
     ////////////////////////////////////////////MENU////////////////////////////////////////////////////////////////////
 
     @FXML private void btnOpenProject(){
-        if(!isFullEdition){
-            String title = "Using community version";
-            String text = "You are using community version, you can't open another project";
-            Tools.openInfoWindow(title, text);
-            return;
-        }
 
         FileChooser fc = new FileChooser();
         File file = fc.showOpenDialog(null);
@@ -83,10 +72,9 @@ public class MainController implements Initializable {
         if(file == null) return;
 
         Thread thread = new Thread(() -> {
-            ObjectInputStream objectinputstream = null;
+            ObjectInputStream objectinputstream;
             try {
-                FileInputStream streamIn = new FileInputStream(file);
-                objectinputstream = new ObjectInputStream(streamIn);
+                objectinputstream = new ObjectInputStream(new FileInputStream(file));
                 project = (Project) objectinputstream.readObject();
                 objectinputstream.close();
             } catch (Exception e) {
@@ -94,32 +82,23 @@ public class MainController implements Initializable {
             }
 
             Platform.runLater(() -> {
-                updateAnalyzedHashesTableView();
                 updateLoadedHashesListView();
                 updateCrackedHashesTableView();
             });
         });
         thread.start();
-
     }
 
     @FXML private void btnSaveProject(){
-        if(!isFullEdition){
-            String title = "Using community version";
-            String text = "You are using community version, you can't save your project";
-            Tools.openInfoWindow(title, text);
-            return;
-        }
+
         FileChooser saveAs = new FileChooser();
         File outputFile = saveAs.showSaveDialog(null);
 
         if(outputFile==null) return;
 
-        ObjectOutputStream oos = null;
-        FileOutputStream fout = null;
+        ObjectOutputStream oos;
         try{
-            fout = new FileOutputStream(outputFile+".cerb", true);
-            oos = new ObjectOutputStream(fout);
+            oos = new ObjectOutputStream(new FileOutputStream(outputFile+".cerb", true));
             oos.writeObject(project);
             oos.close();
         } catch (Exception ex) {
@@ -130,7 +109,6 @@ public class MainController implements Initializable {
     @FXML private void btnExportToCSV(){
 
         FileChooser saveAs = new FileChooser();
-
         File outputFile = saveAs.showSaveDialog(null);
 
         if (outputFile != null) {
@@ -142,7 +120,6 @@ public class MainController implements Initializable {
                 }
 
                 writer.close();
-                System.out.println("Saved");
             }catch (IOException e){
                 e.printStackTrace();
             }
@@ -191,10 +168,13 @@ public class MainController implements Initializable {
     ///////////////////////////////////////////LOAD HASHES TAB//////////////////////////////////////////////////////////
 
     @FXML private Label lHashfileSize;
-    @FXML private ListView<LoadedHash> lvLoadedHashes = new ListView<>();
+    @FXML private TableView<LoadedHash> twAnalyzedHashes;
+    @FXML private TableColumn<LoadedHash,String> tcAlgorithm;
+    @FXML private TableColumn<LoadedHash,String> tcHash;
     @FXML private TextField tfAddHash;
 
     @FXML private void btnSelectHashFile() {
+
         FileChooser fc = new FileChooser();
         File file = fc.showOpenDialog(null);
 
@@ -204,17 +184,18 @@ public class MainController implements Initializable {
             try {
                 BufferedReader br = new BufferedReader(new FileReader(file));
 
-                String hash;
-                while ((hash = br.readLine()) != null) {
-                    if(!isFullEdition) if(project.getLoadedHashes().size()>=10) {
-                        Platform.runLater(() -> {
-                            String title = "Using community version";
-                            String text = "You are using community version, you can add maximum of 10 hashes";
-                            Tools.openInfoWindow(title, text);
-                        });
-                        break;
-                    }
-                    project.addLoadedHash(new LoadedHash(hash));
+                String hexString;
+                while ((hexString = br.readLine()) != null) {
+
+                    byte[] key = Tools.hexStringToByteArray(hexString);
+
+                    ByteArray byteArray = new ByteArray(key);
+
+                    String algorithm = Tools.distinguishHash(hexString);
+
+                    LoadedHash loadedHash = new LoadedHash(hexString,algorithm);
+
+                    project.addLoadedHash(byteArray, loadedHash);
                 }
 
                 Platform.runLater(this::updateLoadedHashesListView);
@@ -226,78 +207,45 @@ public class MainController implements Initializable {
     }
 
     @FXML private void btnClearHashes() {
-        project.setLoadedHashes(new HashSet<>());
+
+        project.setLoadedHashes(new HashMap<>());
         updateLoadedHashesListView();
     }
 
     @FXML private void btnAddHash() {
-        String s = tfAddHash.getText();
+
+        String hexString = tfAddHash.getText();
         tfAddHash.clear();
 
-        if(s.length() == 0) {
+        if(hexString.length() == 0) {
             tfAddHash.setPromptText("Cannot insert empty value");
-        }else if(s.length()%2!=0) {
+        }
+        else if(hexString.length()%2!=0) {
             tfAddHash.setPromptText("Hash must be even number");
-        }else if(!isFullEdition) {
-            if(project.getLoadedHashes().size()>=10) {
-                Platform.runLater(() -> {
-                    String title = "Using community version";
-                    String text = "You are using community version, you can add maximum of 10 hashes";
-                    Tools.openInfoWindow(title, text);
-                });
-                tfAddHash.setPromptText("Community version supports maximum of 10 hashes");
-            }else{
-                project.addLoadedHash(new LoadedHash(s));
-                updateLoadedHashesListView();
-            }
-        }else{
-            project.addLoadedHash(new LoadedHash(s));
+        }
+        else{
+
+            byte[] key = Tools.hexStringToByteArray(hexString);
+
+            ByteArray byteArray = new ByteArray(key);
+
+            String algorithm = Tools.distinguishHash(hexString);
+
+            LoadedHash ah = new LoadedHash(hexString,algorithm);
+
+            project.addLoadedHash(byteArray,ah);
+
             updateLoadedHashesListView();
         }
     }
 
     private void updateLoadedHashesListView(){
-        lvLoadedHashes.getItems().clear();
-        lvLoadedHashes.getItems().addAll(project.getLoadedHashes());
+
+        twAnalyzedHashes.getItems().clear();
+        twAnalyzedHashes.getItems().addAll(project.getLoadedHashes().values());
 
         String out = String.format("Hashes loaded: %,d", project.getLoadedHashes().size());
         lHashfileSize.setText(out);
-    }
-
-    ///////////////////////////////////////ANALYZE HASHES TAB///////////////////////////////////////////////////////////
-
-    @FXML private Label lAnalyzedHashesSize;
-    @FXML private TableView<AnalyzedHash> twAnalyzedHashes;
-    @FXML private TableColumn<AnalyzedHash,String> tcAlgorithm;
-    @FXML private TableColumn<AnalyzedHash,String> tcHash;
-
-    @FXML private void btnAnalyzeLoadedHashes(){
-
-        project.setAnalyzedHashes(new HashMap<>());
-        twAnalyzedHashes.getItems().clear();
-
-        for(LoadedHash lh: project.getLoadedHashes()){
-
-            byte[] key = Tools.hexStringToByteArray(lh.getHexString());
-
-            ByteArray byteArray = new ByteArray(key);
-
-            String hexString = lh.getHexString();
-            String algorithm = Tools.distinguishHash(hexString);
-
-            AnalyzedHash ah = new AnalyzedHash(hexString,algorithm);
-
-            project.addAnalyzedHash(byteArray,ah);
-        }
-        updateAnalyzedHashesTableView();
-    }
-
-    private void updateAnalyzedHashesTableView(){
-        twAnalyzedHashes.getItems().clear();
-        twAnalyzedHashes.getItems().addAll(project.getAnalyzedHashes().values());
-
-        String out = String.format("Hashes analyzed: %,d", project.getAnalyzedHashes().size());
-        lAnalyzedHashesSize.setText(out);
     }
 
     ///////////////////////////////////////////SETTINGS TAB/////////////////////////////////////////////////////////////
@@ -329,8 +277,6 @@ public class MainController implements Initializable {
     private File wordlist = null;
     private long sizeWordlist = 0;
 
-    private long sizeBruteforcer;
-    private char[] charset;
     private int minLength;
     private int maxLength;
 
@@ -371,6 +317,7 @@ public class MainController implements Initializable {
     }
 
     @FXML private void selectWordlist() {
+
         FileChooser fc = new FileChooser();
         File file = fc.showOpenDialog(null);
 
@@ -387,6 +334,7 @@ public class MainController implements Initializable {
     }
 
     @FXML private void chooseRainbowTable() {
+
         FileChooser fc = new FileChooser();
         File file = fc.showOpenDialog(null);
 
@@ -404,7 +352,6 @@ public class MainController implements Initializable {
     /////////////////////////////////////////////RESULTS TAB////////////////////////////////////////////////////////////
 
     @FXML private Tab tabLoadHashes;
-    @FXML private Tab tabAnalyzeHashes;
     @FXML private Tab tabSettings;
     @FXML private Button btnStartCracking;
     @FXML private Button btnStopCracking;
@@ -417,11 +364,11 @@ public class MainController implements Initializable {
     @FXML private TableColumn<CrackedHash, String> tcCrackedHash;
 
     @FXML private void startCracking() {
+
         btnStopCracking.setDisable(false);
 
         btnStartCracking.setDisable(true);
 
-        tabAnalyzeHashes.setDisable(true);
         tabLoadHashes.setDisable(true);
         tabSettings.setDisable(true);
         cbAttackAlgorithm.setDisable(true);
@@ -444,11 +391,11 @@ public class MainController implements Initializable {
     }
 
     @FXML private void stopCracking() {
+
         btnStopCracking.setDisable(true);
 
         btnStartCracking.setDisable(false);
 
-        tabAnalyzeHashes.setDisable(false);
         tabLoadHashes.setDisable(false);
         tabSettings.setDisable(false);
         cbAttackAlgorithm.setDisable(false);
@@ -470,9 +417,7 @@ public class MainController implements Initializable {
         try {
             tvCrackedHashes.getItems().clear();
             tvCrackedHashes.getItems().addAll(project.getCrackedHashes());
-        }catch (ConcurrentModificationException e){
-            //ignorujeme :]
-        }
+        }catch (ConcurrentModificationException e){ }
     }
 
     ///////////////////////////////////////////////////WORDLIST/////////////////////////////////////////////////////////
@@ -502,18 +447,20 @@ public class MainController implements Initializable {
 
                         ByteArray hashedBytes = new ByteArray(Tools.hash(password, attackAlgorithm));
 
-                        if(project.getAnalyzedHashes().containsKey(hashedBytes)) {
-                            String hexString = project.getAnalyzedHashes().get(hashedBytes).getHexString();
-                            CrackedHash ch = new CrackedHash(hexString, password);
+                        if(project.getLoadedHashes().containsKey(hashedBytes)) {
+                            String hexString = project.getLoadedHashes().get(hashedBytes).getHexString();
+                            String algorithm = project.getLoadedHashes().get(hashedBytes).getAlgorithm();
+                            CrackedHash ch = new CrackedHash(hexString, algorithm, password);
                             project.addCrackedHash(ch);
                         }
 
                         counter++;
-                        if(counter%10000==0)
+                        if(counter%10000==0) {
                             Platform.runLater(() -> {
                                 updateProgressBar(counter, sizeWordlist);
                                 updateCrackedHashesTableView();
                             });
+                        }
                     }
                 }catch(Exception e){
                     e.printStackTrace();
@@ -528,16 +475,14 @@ public class MainController implements Initializable {
 
     private void startCrackWithBruteforce(){
 
-
-
         String charset = textFieldCharset.getText();
         minLength = Integer.parseInt(textFieldMinLength.getText());
         maxLength = Integer.parseInt(textFieldMaxLength.getText());
 
         counter = 0;
-        sizeBruteforcer=0;
+        long sizeBruteforcer = 0;
         for (int i = minLength; i < maxLength+1; i++) {
-            sizeBruteforcer+=Math.pow(charset.length(),i);
+            sizeBruteforcer += Math.pow(charset.length(),i);
         }
 
         final String attackAlgorithm = cbAttackAlgorithm.getValue();
@@ -567,22 +512,25 @@ public class MainController implements Initializable {
                 try {
                     BufferedReader br = new BufferedReader(new FileReader(rainbowTable));
 
-                    for (int j = 0; j < finalI * (sizeRainbowtable / 4); j++) br.readLine();
+                    for (int j = 0; j < finalI * (sizeRainbowtable / 4); j++) {
+                        br.readLine();
+                    }
 
                     String line;
                     while ((line = br.readLine()) != null) {
-                        if (counter > sizeRainbowtable) stopCracking();
-                        if (!isCracking) break;
+                        if (counter > sizeRainbowtable) {
+                            stopCracking();
+                        }
+                        if (!isCracking) {
+                            break;
+                        }
 
                         String[] array = line.trim().split(":");
-
                         ByteArray ba = new ByteArray(Tools.hexStringToByteArray(array[0]));
 
-                        if (project.getAnalyzedHashes().containsKey(ba)) {
-                            CrackedHash ch = new CrackedHash(array[0], array[1]);
-
+                        if (project.getLoadedHashes().containsKey(ba)) {
+                            CrackedHash ch = new CrackedHash(array[0], "", array[1]);
                             project.addCrackedHash(ch);
-
                             Platform.runLater(() -> tvCrackedHashes.getItems().add(ch));
                         }
 
@@ -594,12 +542,9 @@ public class MainController implements Initializable {
                     e.printStackTrace();
                 }
             });
-
             threads[i].start();
         }
-
     }
 
     ///////////////////////////////////////////////END OF RAINBOW RABLE/////////////////////////////////////////////////
-
 }

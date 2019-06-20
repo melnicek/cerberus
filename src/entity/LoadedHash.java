@@ -7,9 +7,11 @@ import java.util.Objects;
 public class LoadedHash implements Serializable {
 
     private String hexString;
+    private String algorithm;
 
-    public LoadedHash(String hexString) {
+    public LoadedHash(String hexString, String algorithm) {
         this.hexString = hexString;
+        this.algorithm = algorithm;
     }
 
     public String getHexString() {
@@ -17,6 +19,12 @@ public class LoadedHash implements Serializable {
     }
     public void setHexString(String hexString) {
         this.hexString = hexString;
+    }
+    public String getAlgorithm() {
+        return algorithm;
+    }
+    public void setAlgorithm(String algorithm) {
+        this.algorithm = algorithm;
     }
 
     // toString returns hexString now

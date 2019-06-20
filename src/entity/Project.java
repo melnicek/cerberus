@@ -10,7 +10,6 @@ import java.util.Set;
 public class Project implements Serializable {
 
     // loaded hashes
-    private Set<LoadedHash> loadedHashes = new HashSet<>();
 
     /*
         map is used for faster access to hashes, when hashing we need to check
@@ -26,7 +25,7 @@ public class Project implements Serializable {
         set      > map
         map uses less time
     */
-    private Map<ByteArray,AnalyzedHash> analyzedHashes = new HashMap<>();
+    private Map<ByteArray, LoadedHash> loadedHashes = new HashMap<>();
 
     // cracked hashes
     private Set<CrackedHash> crackedHashes = new HashSet<>();
@@ -35,25 +34,14 @@ public class Project implements Serializable {
     public Project(){ }
 
     // getters, setters, adders for loaded hashes
-    public Set<LoadedHash> getLoadedHashes() {
+    public Map<ByteArray,LoadedHash> getLoadedHashes() {
         return loadedHashes;
     }
-    public void setLoadedHashes(Set<LoadedHash> loadedHashes) {
+    public void setLoadedHashes(Map<ByteArray,LoadedHash> loadedHashes) {
         this.loadedHashes = loadedHashes;
     }
-    public void addLoadedHash(LoadedHash loadedHash) {
-        this.loadedHashes.add(loadedHash);
-    }
-
-    // getters, setters, adders for analyzed hashes
-    public Map<ByteArray, AnalyzedHash> getAnalyzedHashes() {
-        return analyzedHashes;
-    }
-    public void setAnalyzedHashes(Map<ByteArray, AnalyzedHash> analyzedHashes) {
-        this.analyzedHashes = analyzedHashes;
-    }
-    public void addAnalyzedHash(ByteArray key, AnalyzedHash analyzedHash) {
-        this.analyzedHashes.put(key, analyzedHash);
+    public void addLoadedHash(ByteArray key, LoadedHash loadedHash) {
+        this.loadedHashes.put(key, loadedHash);
     }
 
     // getters, setters, adders for cracked hashes
